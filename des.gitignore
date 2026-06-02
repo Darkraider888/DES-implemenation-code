@@ -1,0 +1,24 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output folders
+*.ilk
+*.map
+*.exp
+
+# Compiled Executables (System Specific binaries)
+des
+des.exe
+*.out
+*.app
+
+# IDE Configurations & Cache
+.vscode/
+.idea/
+.DS_Store
