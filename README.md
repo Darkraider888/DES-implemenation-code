@@ -25,3 +25,54 @@ Ensure you have a working C compiler installation (such as `gcc` via MinGW on Wi
 Compile the raw source file using the GNU Compiler Collection (GCC):
 ```bash
 gcc des.c -o des
+
+---
+----------------------------------------------------------------------------------------------------------------------------
+### File 3: The Git Exclusion File
+* **Name it exactly:** `.gitignore` *(Remember the dot at the very beginning!)*
+* **Why this is important for C:** When you compile C code, it generates executable binaries (`des` or `des.exe`) and object files (`.o`). These files are massive, system-specific machine code that should **never** be pushed to GitHub. This file keeps your repository completely pristine.
+* **What to do:** Create a file named `.gitignore` and paste this block inside:
+
+```text
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output folders
+*.ilk
+*.map
+*.exp
+
+# Compiled Executables (System Specific binaries)
+des
+des.exe
+*.out
+*.app
+
+# IDE Configurations & Cache
+.vscode/
+.idea/
+.DS_Store
+-----------------------------------------------------------------------------------------------------------------------------
+# 1. Initialize local repository tracking
+git init
+
+# 2. Stage all architectural components
+git add .
+
+# 3. Commit the staged assets
+git commit -m "Complete repository build: Added functional C DES cipher, gitignore, and compilation README"
+
+# 4. Enforce main as baseline branch
+git branch -M main
+
+# 5. Link to your online GitHub repository (Replace with your actual URL)
+git remote add origin https://github.com/your-username/your-repository-name.git
+
+# 6. Push the code up online
+git push -u origin main
