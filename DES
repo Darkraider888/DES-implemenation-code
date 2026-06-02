@@ -1,0 +1,419 @@
+/*
+Full DES Algorithm in C
+Educational use only. DES is outdated and not secure for modern systems.
+Compile:
+gcc des.c -o des
+Run:
+./des
+*/
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdlib.h>
+
+static const int IP[64] = {
+    58,50,42,34,26,18,10,2,
+    60,52,44,36,28,20,12,4,
+    62,54,46,38,30,22,14,6,
+    64,56,48,40,32,24,16,8,
+    57,49,41,33,25,17,9,1,
+    59,51,43,35,27,19,11,3,
+    61,53,45,37,29,21,13,5,
+    63,55,47,39,31,23,15,7
+};
+
+static const int FP[64] = {
+    40,8,48,16,56,24,64,32,
+    39,7,47,15,55,23,63,31,
+    38,6,46,14,54,22,62,30,
+    37,5,45,13,53,21,61,29,
+    36,4,44,12,52,20,60,28,
+    35,3,43,11,51,19,59,27,
+    34,2,42,10,50,18,58,26,
+    33,1,41,9,49,17,57,25
+};
+
+static const int E[48] = {
+    32,1,2,3,4,5,
+    4,5,6,7,8,9,
+    8,9,10,11,12,13,
+    12,13,14,15,16,17,
+    16,17,18,19,20,21,
+    20,21,22,23,24,25,
+    24,25,26,27,28,29,
+    28,29,30,31,32,1
+};
+
+static const int P[32] = {
+    16,7,20,21,
+    29,12,28,17,
+    1,15,23,26,
+    5,18,31,10,
+    2,8,24,14,
+    27,3,9,
+    19,13,30,6,
+    22,11,4,25
+};
+
+static const int PC1[56] = {
+    57,49,41,33,25,17,9,
+    1,58,50,42,34,26,18,
+    10,2,59,51,43,35,27,
+    19,11,3,60,52,44,36,
+    63,55,47,39,31,23,15,
+    7,62,54,46,38,30,22,
+    14,6,61,53,45,37,29,
+    21,13,5,28,20,12,4
+};
+
+static const int PC2[48] = {
+    14,17,11,24,1,5,
+    3,28,15,6,21,10,
+    23,19,12,4,26,8,
+    16,7,27,20,13,2,
+    41,52,31,37,47,55,
+    30,40,51,45,33,48,
+    44,49,39,56,34,53,
+    46,42,50,36,29,32
+};
+
+static const int SHIFT_SCHEDULE[16] = {
+    1,1,2,2,
+    2,2,2,2,
+    1,2,2,2,
+    2,2,2,1
+};
+
+static const int S_BOX[8][4][16] = {
+    {
+        {14,4,13,1,2,15,11,8,3,10,6,12,5,9,0,7},
+        {0,15,7,4,14,2,13,1,10,6,12,11,9,5,3,8},
+        {4,1,14,8,13,6,2,11,15,12,9,7,3,10,5,0},
+        {15,12,8,2,4,9,1,7,5,11,3,14,10,0,6,13}
+    },
+    {
+        {15,1,8,14,6,11,3,4,9,7,2,13,12,0,5,10},
+        {3,13,4,7,15,2,8,14,12,0,1,10,6,9,11,5},
+        {0,14,7,11,10,4,13,1,5,8,12,6,9,3,2,15},
+        {13,8,10,1,3,15,4,2,11,6,7,12,0,5,14,9}
+    },
+    {
+        {10,0,9,14,6,3,15,5,1,13,12,7,11,4,2,8},
+        {13,7,0,9,3,4,6,10,2,8,5,14,12,11,15,1},
+        {13,6,4,9,8,15,3,0,11,1,2,12,5,10,14,7},
+        {1,10,13,0,6,9,8,7,4,15,14,3,11,5,2,12}
+    },
+    {
+        {7,13,14,3,0,6,9,10,1,2,8,5,11,12,4,15},
+        {13,8,11,5,6,15,0,3,4,7,2,12,1,10,14,9},
+        {10,6,9,0,12,11,7,13,15,1,3,14,5,2,8,4},
+        {3,15,0,6,10,1,13,8,9,4,5,11,12,7,2,14}
+    },
+    {
+        {2,12,4,1,7,10,11,6,8,5,3,15,13,0,14,9},
+        {14,11,2,12,4,7,13,1,5,0,15,10,3,9,8,6},
+        {4,2,1,11,10,13,7,8,15,9,12,5,6,3,0,14},
+        {11,8,12,7,1,14,2,13,6,15,0,9,10,4,5,3}
+    },
+    {
+        {12,1,10,15,9,2,6,8,0,13,3,4,14,7,5,11},
+        {10,15,4,2,7,12,9,5,6,1,13,14,0,11,3,8},
+        {9,14,15,5,2,8,12,3,7,0,4,10,1,13,11,6},
+        {4,3,2,12,9,5,15,10,11,14,1,7,6,0,8,13}
+    },
+    {
+        {4,11,2,14,15,0,8,13,3,12,9,7,5,10,6,1},
+        {13,0,11,7,4,9,1,10,14,3,5,12,2,15,8,6},
+        {1,4,11,13,12,3,7,14,10,15,6,8,0,5,9,2},
+        {6,11,13,8,1,4,10,7,9,5,0,15,14,2,3,12}
+    },
+    {
+        {13,2,8,4,6,15,11,1,10,9,3,14,5,0,12,7},
+        {1,15,13,8,10,3,7,4,12,5,6,11,0,14,9,2},
+        {7,11,4,1,9,12,14,2,0,6,10,13,15,3,5,8},
+        {2,1,14,7,4,10,8,13,15,12,9,0,3,5,6,11}
+    }
+};
+
+uint64_t bytes_to_uint64(const unsigned char block[8]) {
+    uint64_t value = 0;
+    for (int i = 0; i < 8; i++) {
+        value = (value << 8) | block[i];
+    }
+    return value;
+}
+
+void uint64_to_bytes(uint64_t value, unsigned char block[8]) {
+    for (int i = 7; i >= 0; i--) {
+        block[i] = value & 0xFF;
+        value >>= 8;
+    }
+}
+
+uint64_t permute(uint64_t input, const int *table, int table_size, int input_size) {
+    uint64_t output = 0;
+    for (int i = 0; i < table_size; i++) {
+        output <<= 1;
+        output |= (input >> (input_size - table[i])) & 1;
+    }
+    return output;
+}
+
+uint32_t left_rotate_28(uint32_t value, int shifts) {
+    return ((value << shifts) | (value >> (28 - shifts))) & 0x0FFFFFFF;
+}
+
+void generate_round_keys(const unsigned char key[8], uint64_t round_keys[16]) {
+    uint64_t key64 = bytes_to_uint64(key);
+    uint64_t key56 = permute(key64, PC1, 56, 64);
+    uint32_t C = (uint32_t)((key56 >> 28) & 0x0FFFFFFF);
+    uint32_t D = (uint32_t)(key56 & 0x0FFFFFFF);
+    for (int i = 0; i < 16; i++) {
+        C = left_rotate_28(C, SHIFT_SCHEDULE[i]);
+        D = left_rotate_28(D, SHIFT_SCHEDULE[i]);
+        uint64_t combined = ((uint64_t)C << 28) | D;
+        round_keys[i] = permute(combined, PC2, 48, 56);
+    }
+}
+
+uint32_t s_box_substitution(uint64_t input48) {
+    uint32_t output32 = 0;
+    for (int i = 0; i < 8; i++) {
+        uint8_t block = (input48 >> (42 - 6 * i)) & 0x3F;
+        int row = ((block & 0x20) >> 4) | (block & 0x01);
+        int col = (block >> 1) & 0x0F;
+        output32 = (output32 << 4) | S_BOX[i][row][col];
+    }
+    return output32;
+}
+
+uint32_t feistel(uint32_t right, uint64_t round_key) {
+    uint64_t expanded = permute((uint64_t)right, E, 48, 32);
+    uint64_t xored = expanded ^ round_key;
+    uint32_t substituted = s_box_substitution(xored);
+    uint32_t permuted = (uint32_t)permute((uint64_t)substituted, P, 32, 32);
+    return permuted;
+}
+
+uint64_t des_process_block(uint64_t block, uint64_t round_keys[16], int decrypt) {
+    uint64_t permuted = permute(block, IP, 64, 64);
+    uint32_t left = (uint32_t)(permuted >> 32);
+    uint32_t right = (uint32_t)(permuted & 0xFFFFFFFF);
+    for (int i = 0; i < 16; i++) {
+        uint32_t old_right = right;
+        int key_index = decrypt ? (15 - i) : i;
+        right = left ^ feistel(right, round_keys[key_index]);
+        left = old_right;
+    }
+    uint64_t combined = ((uint64_t)right << 32) | left;
+    return permute(combined, FP, 64, 64);
+}
+
+void des_encrypt_block(const unsigned char plaintext[8], const unsigned char key[8], unsigned char ciphertext[8]) {
+    uint64_t round_keys[16];
+    generate_round_keys(key, round_keys);
+    uint64_t block = bytes_to_uint64(plaintext);
+    uint64_t encrypted = des_process_block(block, round_keys, 0);
+    uint64_to_bytes(encrypted, ciphertext);
+}
+
+void des_decrypt_block(const unsigned char ciphertext[8], const unsigned char key[8], unsigned char plaintext[8]) {
+    uint64_t round_keys[16];
+    generate_round_keys(key, round_keys);
+    uint64_t block = bytes_to_uint64(ciphertext);
+    uint64_t decrypted = des_process_block(block, round_keys, 1);
+    uint64_to_bytes(decrypted, plaintext);
+}
+
+unsigned char *pkcs7_pad(const unsigned char *data, size_t data_len, size_t *padded_len) {
+    size_t padding = 8 - (data_len % 8);
+    *padded_len = data_len + padding;
+    unsigned char *padded = malloc(*padded_len);
+    if (!padded) {
+        return NULL;
+    }
+    memcpy(padded, data, data_len);
+    memset(padded + data_len, (unsigned char)padding, padding);
+    return padded;
+}
+
+int pkcs7_unpad(unsigned char *data, size_t *data_len) {
+    if (*data_len == 0) {
+        return 0;
+    }
+    unsigned char padding = data[*data_len - 1];
+    if (padding < 1 || padding > 8 || padding > *data_len) {
+        return 0;
+    }
+    for (size_t i = *data_len - padding; i < *data_len; i++) {
+        if (data[i] != padding) {
+            return 0;
+        }
+    }
+    *data_len -= padding;
+    return 1;
+}
+
+unsigned char *des_ecb_encrypt(const unsigned char *plaintext, size_t plaintext_len,
+                               const unsigned char key[8], size_t *ciphertext_len) {
+    size_t padded_len;
+    unsigned char *padded = pkcs7_pad(plaintext, plaintext_len, &padded_len);
+    if (!padded) {
+        return NULL;
+    }
+    unsigned char *ciphertext = malloc(padded_len);
+    if (!ciphertext) {
+        free(padded);
+        return NULL;
+    }
+    for (size_t i = 0; i < padded_len; i += 8) {
+        des_encrypt_block(padded + i, key, ciphertext + i);
+    }
+    free(padded);
+    *ciphertext_len = padded_len;
+    return ciphertext;
+}
+
+unsigned char *des_ecb_decrypt(const unsigned char *ciphertext, size_t ciphertext_len,
+                               const unsigned char key[8], size_t *plaintext_len) {
+    if (ciphertext_len % 8 != 0) {
+        return NULL;
+    }
+    unsigned char *plaintext = malloc(ciphertext_len);
+    if (!plaintext) {
+        return NULL;
+    }
+    for (size_t i = 0; i < ciphertext_len; i += 8) {
+        des_decrypt_block(ciphertext + i, key, plaintext + i);
+    }
+    *plaintext_len = ciphertext_len;
+    if (!pkcs7_unpad(plaintext, plaintext_len)) {
+        free(plaintext);
+        return NULL;
+    }
+    return plaintext;
+}
+
+unsigned char *des_cbc_encrypt(const unsigned char *plaintext, size_t plaintext_len,
+                               const unsigned char key[8], const unsigned char iv[8],
+                               size_t *ciphertext_len) {
+    size_t padded_len;
+    unsigned char *padded = pkcs7_pad(plaintext, plaintext_len, &padded_len);
+    if (!padded) {
+        return NULL;
+    }
+    unsigned char *ciphertext = malloc(padded_len);
+    if (!ciphertext) {
+        free(padded);
+        return NULL;
+    }
+    unsigned char previous[8];
+    memcpy(previous, iv, 8);
+    for (size_t i = 0; i < padded_len; i += 8) {
+        unsigned char xored[8];
+        for (int j = 0; j < 8; j++) {
+            xored[j] = padded[i + j] ^ previous[j];
+        }
+        des_encrypt_block(xored, key, ciphertext + i);
+        memcpy(previous, ciphertext + i, 8);
+    }
+    free(padded);
+    *ciphertext_len = padded_len;
+    return ciphertext;
+}
+
+unsigned char *des_cbc_decrypt(const unsigned char *ciphertext, size_t ciphertext_len,
+                               const unsigned char key[8], const unsigned char iv[8],
+                               size_t *plaintext_len) {
+    if (ciphertext_len % 8 != 0) {
+        return NULL;
+    }
+    unsigned char *plaintext = malloc(ciphertext_len);
+    if (!plaintext) {
+        return NULL;
+    }
+    unsigned char previous[8];
+    memcpy(previous, iv, 8);
+    for (size_t i = 0; i < ciphertext_len; i += 8) {
+        unsigned char decrypted[8];
+        des_decrypt_block(ciphertext + i, key, decrypted);
+        for (int j = 0; j < 8; j++) {
+            plaintext[i + j] = decrypted[j] ^ previous[j];
+        }
+        memcpy(previous, ciphertext + i, 8);
+    }
+    *plaintext_len = ciphertext_len;
+    if (!pkcs7_unpad(plaintext, plaintext_len)) {
+        free(plaintext);
+        return NULL;
+    }
+    return plaintext;
+}
+
+void print_hex(const unsigned char *data, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        printf("%02X", data[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    unsigned char key[8] = "12345678";
+    unsigned char iv[8] = "abcdefgh";
+    const unsigned char message[] = "Hello DES Algorithm!";
+    size_t message_len = strlen((const char *)message);
+    
+    printf("Original Message: %s\n\n", message);
+    
+    // ECB Mode
+    size_t ecb_cipher_len;
+    unsigned char *ecb_cipher = des_ecb_encrypt(message, message_len, key, &ecb_cipher_len);
+    if (!ecb_cipher) {
+        printf("ECB encryption failed.\n");
+        return 1;
+    }
+    printf("ECB Encrypted HEX: ");
+    print_hex(ecb_cipher, ecb_cipher_len);
+    
+    size_t ecb_plain_len;
+    unsigned char *ecb_plain = des_ecb_decrypt(ecb_cipher, ecb_cipher_len, key, &ecb_plain_len);
+    if (!ecb_plain) {
+        printf("ECB decryption failed.\n");
+        free(ecb_cipher);
+        return 1;
+    }
+    printf("ECB Decrypted: ");
+    fwrite(ecb_plain, 1, ecb_plain_len, stdout);
+    printf("\n\n");
+    
+    // CBC Mode
+    size_t cbc_cipher_len;
+    unsigned char *cbc_cipher = des_cbc_encrypt(message, message_len, key, iv, &cbc_cipher_len);
+    if (!cbc_cipher) {
+        printf("CBC encryption failed.\n");
+        free(ecb_cipher);
+        free(ecb_plain);
+        return 1;
+    }
+    printf("CBC Encrypted HEX: ");
+    print_hex(cbc_cipher, cbc_cipher_len);
+    
+    size_t cbc_plain_len;
+    unsigned char *cbc_plain = des_cbc_decrypt(cbc_cipher, cbc_cipher_len, key, iv, &cbc_plain_len);
+    if (!cbc_plain) {
+        printf("CBC decryption failed.\n");
+        free(ecb_cipher);
+        free(ecb_plain);
+        free(cbc_cipher);
+        return 1;
+    }
+    printf("CBC Decrypted: ");
+    fwrite(cbc_plain, 1, cbc_plain_len, stdout);
+    printf("\n");
+    
+    free(ecb_cipher);
+    free(ecb_plain);
+    free(cbc_cipher);
+    free(cbc_plain);
+    return 0;
+}
