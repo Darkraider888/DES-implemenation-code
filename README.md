@@ -28,7 +28,7 @@ gcc des.c -o des
 
 ---
 ----------------------------------------------------------------------------------------------------------------------------
-### File 3: The Git Exclusion File
+###  The Git Exclusion File
 * **Name it exactly:** `.gitignore` *(Remember the dot at the very beginning!)*
 * **Why this is important for C:** When you compile C code, it generates executable binaries (`des` or `des.exe`) and object files (`.o`). These files are massive, system-specific machine code that should **never** be pushed to GitHub. This file keeps your repository completely pristine.
 * **What to do:** Create a file named `.gitignore` and paste this block inside:
